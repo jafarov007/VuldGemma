@@ -1,0 +1,105 @@
+# ===========================
+#        config.yaml
+# ===========================
+
+# ---------------------------
+# General Settings
+# ---------------------------
+project: vuldgemma_clean
+seed: 42
+device: cuda
+precision: bf16              # bfloat16 for optimal speed + memory
+epochs: 8
+batch_size: 32
+grad_accum_steps: 1
+num_workers: 8
+save_top_k: 2
+save_dir: "./runs"
+monitor_metric: f1_vuln
+monitor_mode: max
+ablation_mode: "full"        # "full" | "code_only" | "graph_only"
+
+# ---------------------------
+# Data Paths
+# ---------------------------
+paths:
+  root: "../data"
+  code:
+    vuln:
+      train: "vulnerables_codes"
+      valid: "vulnerables_codes_valid"
+      test:  "vulnerables_codes_test"
+    safe:
+      train: "non_vulnerables_codes"
+      valid: "non_vulnerables_codes_valid"
+      test:  "non_vulnerables_codes_test"
+  graph:
+    vuln:
+      train: "vulnerables_graph"
+      valid: "vulnerables_graph_valid"
+      test:  "vulnerables_graph_test"
+    safe:
+      train: "non_vulnerables_graph"
+      valid: "non_vulnerables_graph_valid"
+      test:  "non_vulnerables_graph_test"
+
+data_source:
+  mode: "fs"
+
+# ---------------------------
+# Sequence Lengths
+# ---------------------------
+seq_lens:
+  code_max: 1024
+  graph_max: 1536
+
+# ---------------------------
+# Model Configuration
+# ---------------------------
+model:
+  base: "google/gemma-3-1b-it"
+  dropout: 0.1
+  num_classes: 1             # 1 for binary classification (BCE/FocalLoss expects [N, 1])
+  gradient_checkpointing: true # MUST BE TRUE for long sequences (1024+1536), otherwise >60GB VRAM
+
+# ---------------------------
+# Co-Attention (Paper Section 3.3)
+# ---------------------------
+co_attention:
+  n_heads: 4                 # Multi-head cross-attention
+
+# ---------------------------
+# LoRA (PEFT) Settings
+# ---------------------------
+lora:
+  enabled: true
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.1
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# ---------------------------
+# Optimizer & Scheduler
+# ---------------------------
+optim:
+  lr: 2e-5
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  warmup_ratio: 0.25
+
+# ---------------------------
+# Loss Configuration
+# ---------------------------
+loss:
+  focal_gamma: 2.0
+  label_smoothing: 0.1
+  pos_weight: 1.0
+  use_dynamic_pos_weight: false
+
+# ---------------------------
+# Strategies
+# ---------------------------
+strategies:
+  ema_enabled: true
+  ema_decay: 0.999
+  optimal_threshold: true
