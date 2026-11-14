@@ -145,16 +145,13 @@ def main():
             print(f"  - Original Vulnerability Probability : {prob_base*100:.2f}%")
             print(f"  - Probability after masking Top-{args.mask_k}: {prob_masked*100:.2f}%")
             drop_str = f"{drop*100:.2f}% 📉 (Drop)" if drop > 0 else f"{abs(drop)*100:.2f}% 📈 (Increase)"
-            print(f"  - PROBABILITY CHANGE (Causality Proof): {drop_str}")
+            print(f"  - Probability change: {drop_str}")
             print("-" * 50)
 
     if valid_samples > 0:
         avg_drop = total_drop / valid_samples
         print(f"\nSUMMARY ACROSS ALL {valid_samples} TRUE POSITIVE SAMPLES:")
         print(f"AVERAGE PROBABILITY DROP: {avg_drop*100:.2f}%")
-        print("CONCLUSION: This high probability drop proves that the model")
-        print("was looking at the correct structural features (shown in the heatmaps)")
-        print("to make its vulnerability prediction, rather than relying on spurious correlations.")
 
 if __name__ == "__main__":
     main()

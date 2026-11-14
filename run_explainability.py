@@ -172,7 +172,6 @@ def main():
         json.dump(output_data, f, indent=2)
         
     print(f"\n Explainability data saved to {out_file} and PNG heatmaps generated!")
-    print("This proves the model is learning CROSS-MODAL relationships!")
 
 if __name__ == "__main__":
     main()
