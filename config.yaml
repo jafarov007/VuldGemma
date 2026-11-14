@@ -85,7 +85,7 @@ optim:
   lr: 2e-5
   weight_decay: 0.01
   max_grad_norm: 1.0
-  warmup_ratio: 0.25           # Paper: 0.10 for Devign, 0.25 for ReVeal
+  warmup_ratio: 0.25
 
 # ---------------------------
 # Loss Configuration
@@ -93,7 +93,7 @@ optim:
 loss:
   focal_gamma: 2.0
   label_smoothing: 0.1
-  pos_weight: 1.0              # Paper: 1.0 for Devign, 2.0 for ReVeal
+  pos_weight: 1.0
   use_dynamic_pos_weight: false
 
 # ---------------------------
@@ -102,5 +102,4 @@ loss:
 strategies:
   ema_enabled: true
   ema_decay: 0.999
-  optimal_threshold: true      # Threshold selected on the validation set, reused on test
-  threshold_max_recall: null   # Paper: 0.80 for Devign, null (unconstrained) for ReVeal
+  optimal_threshold: true
