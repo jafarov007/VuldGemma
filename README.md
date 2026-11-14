@@ -163,9 +163,33 @@ strategies:
 
 You can modify `config.yaml` directly or override specific settings via CLI flags.
 
+### Dataset-specific settings used in the paper
+
+The reported experiments used the following dataset-specific values (all other settings as in `config.yaml`):
+
+| Setting | Devign | ReVeal |
+|---|---|---|
+| `optim.warmup_ratio` | 0.10 | 0.25 |
+| `loss.pos_weight` | 1.0 | 2.0 |
+| `strategies.threshold_max_recall` | 0.80 | `null` (unconstrained) |
+
+The decision threshold is selected on the validation set during training, stored in the checkpoint, and reused unchanged by `run_test.py` on the test set.
+
 ---
 
 ## Data Preparation
+
+### Building the graph inputs (Joern)
+
+The textual graph files are produced from the C/C++ functions with [Joern](https://github.com/joernio/joern) **v4.0.227** using the scripts in [`preprocessing/`](preprocessing/README.md):
+
+1. `preprocessing/01_joern_parse.sh` — builds a Code Property Graph for every function (`joern-parse`).
+2. `preprocessing/02_joern_export.sh` — exports each CPG to GraphSON (`joern-export --repr cpg --format graphson`).
+3. `preprocessing/03_graph_to_text.py` — converts each export into the `NODE` / `EDGE` text format read by `src/data.py`.
+
+The exact train/validation/test splits used in the paper are listed in `preprocessing/splits/`.
+
+### Directory layout
 
 The dataset should be organized under the `paths.root` directory (default: `../data`) as follows:
 

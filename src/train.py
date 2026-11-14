@@ -78,6 +78,7 @@ class Trainer:
             print("  [EMA] Inactive")
         
         self.use_optimal_threshold = strat_cfg.get("optimal_threshold", True)
+        self.threshold_max_recall = strat_cfg.get("threshold_max_recall", None)
 
         # ── Mode (for ablation studies) ──
         self.mode = cfg.get("ablation_mode", "full")
@@ -189,7 +190,9 @@ class Trainer:
 
         # ── Optimal Threshold Search ──
         if self.use_optimal_threshold:
-            best_t, best_f1_at_t = ThresholdOptimizer.find_optimal_threshold(all_probs, all_labels)
+            best_t, best_f1_at_t = ThresholdOptimizer.find_optimal_threshold(
+                all_probs, all_labels, max_recall=self.threshold_max_recall
+            )
         else:
             best_t = 0.5
             preds_t = (all_probs >= 0.5).astype(int)
