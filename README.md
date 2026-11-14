@@ -1,6 +1,6 @@
-# VulDGemma — Training & Evaluation Codebase
+# VuldGemma — Training & Evaluation Codebase
 
-VulDGemma is an explainable, multi-modal vulnerability detection system that combines **source code** and **Code Property Graph (CPG)** representations using Google's Gemma LLM backbone with LoRA fine-tuning and bidirectional co-attention.
+VuldGemma is an explainable, multi-modal vulnerability detection system that combines **source code** and **Code Property Graph (CPG)** representations using Google's Gemma LLM backbone with LoRA fine-tuning and bidirectional co-attention.
 
 The model processes two input streams simultaneously:
 - **Code Stream**: Raw source code (C/C++) tokenized and encoded through Gemma.
@@ -74,7 +74,7 @@ egitimkodlari/
 ├── requirements.txt         # Python dependencies
 ├── run_train.py             # Training entry point
 ├── run_test.py              # Test evaluation entry point
-├── run_experiments.py       # Automated multi-seed & ablation experiments
+├── run_experiments.py       # Automated ablation experiments
 ├── run_explainability.py    # Cross-attention heatmap extraction (batch)
 ├── run_perturbation.py      # Occlusion-based perturbation analysis
 ├── explain_single.py        # Single-file heatmap (line-to-node aggregation)
@@ -89,7 +89,7 @@ egitimkodlari/
     ├── data.py               # Dataset loading, CPG compression, binary caching
     ├── train.py              # Trainer class (training loop, validation, EMA)
     ├── losses.py             # Focal Loss implementation
-    ├── strategies.py         # ThresholdOptimizer, ModelEMA, SeedAggregator
+    ├── strategies.py         # ThresholdOptimizer, ModelEMA
     └── utils.py              # Helpers (metrics, logging, checkpointing, etc.)
 ```
 
@@ -307,22 +307,14 @@ python run_test.py --config config.yaml --checkpoint runs/best_model_ep5.pt --se
 
 ## Automated Experiments
 
-`run_experiments.py` automates multi-seed and ablation experiments. It trains models with different configurations, aggregates results across seeds, and prints summary tables.
-
-### Multi-Seed Robustness Test
-
-Run the same configuration with multiple seeds to measure variance:
-
-```bash
-python run_experiments.py --config config.yaml --seeds 42,123,456
-```
+`run_experiments.py` automates ablation experiments. It trains models with different configurations and prints summary tables.
 
 ### Modal Ablation (Table A)
 
 Automatically trains and compares `code_only`, `graph_only`, and `full` modes:
 
 ```bash
-python run_experiments.py --config config.yaml --seeds 42,123,456 --ablation
+python run_experiments.py --config config.yaml --ablation
 ```
 
 ### Component Ablation (Table B)
@@ -330,10 +322,10 @@ python run_experiments.py --config config.yaml --seeds 42,123,456 --ablation
 Automatically trains and compares the effect of each component (EMA, Focal Loss, Optimal Threshold):
 
 ```bash
-python run_experiments.py --config config.yaml --seeds 42,123,456 --component-ablation
+python run_experiments.py --config config.yaml --component-ablation
 ```
 
-This runs three experiments per seed:
+This runs three experiments:
 1. Full System (+EMA, +Focal, +Optimal Threshold)
 2. Without Focal Loss (uses BCE)
 3. Without EMA
@@ -343,7 +335,7 @@ This runs three experiments per seed:
 Run both modal and component ablation together:
 
 ```bash
-python run_experiments.py --config config.yaml --seeds 42,123,456 --ablation --component-ablation
+python run_experiments.py --config config.yaml --ablation --component-ablation
 ```
 
 > **Warning:** Running the full ablation suite trains many models sequentially. Depending on the dataset size and GPU, this can take a **very long time** (hours to days). Each individual experiment runs a complete training cycle. Plan accordingly and consider using a multi-GPU setup or running experiments in stages.
@@ -406,7 +398,7 @@ Outputs:
 
 ### Perturbation Analysis (`run_perturbation.py`)
 
-Validates that the model's attention is causally meaningful (not just correlative) by masking the top-attended tokens and measuring probability drop:
+Masks the top-attended tokens and measures the resulting change in the predicted vulnerability probability:
 
 ```bash
 python run_perturbation.py --config config.yaml \
@@ -419,7 +411,7 @@ Options:
 - `--mask_k N`: Number of top-attended tokens to mask in both code and graph streams (default: 15).
 - `--samples N`: Number of True Positive samples to display detailed logs for (default: 10). All TPs are processed for the summary.
 
-Outputs: Prints per-sample probability change and an overall average probability drop. A high average drop confirms that the model relies on the structural features highlighted in the heatmaps.
+Outputs: Prints the per-sample probability change and the average probability drop across all True Positive samples.
 
 ---
 
@@ -468,9 +460,9 @@ python print_tokens.py
 |---|---|
 | `run_train.py` | Main training entry point. Loads config, builds datasets/model, and starts the Trainer. Supports `--mode`, `--without-ema`, `--without-focal` flags. |
 | `run_test.py` | Test evaluation script. Loads a checkpoint and evaluates on the test set. Reports F1, F2, Precision, Recall, Accuracy, ROC-AUC, PR-AUC, confusion matrix, and probability distributions. Supports `--mode`, `--threshold`, `--search-test` flags. |
-| `run_experiments.py` | Automated experiment runner. Handles multi-seed training, modal ablation (`--ablation`), and component ablation (`--component-ablation`). Aggregates results with mean/std and saves JSON reports. |
+| `run_experiments.py` | Automated experiment runner. Handles modal ablation (`--ablation`) and component ablation (`--component-ablation`), and saves JSON reports. |
 | `run_explainability.py` | Batch cross-attention heatmap extractor. Uses Trainer's `extract_attention_heatmaps()` to get attention weights, then generates PNG heatmaps and JSON data for True Positive samples. |
-| `run_perturbation.py` | Occlusion-based perturbation test. Masks top-K attended tokens in both streams, re-runs inference, and measures probability change to validate attention causality. |
+| `run_perturbation.py` | Occlusion-based perturbation test. Masks top-K attended tokens in both streams, re-runs inference, and measures the resulting probability change. |
 | `explain_single.py` | Single-file explainability tool. Tokenizes a specific file with offset mapping, runs inference, then aggregates token-level cross-attention to **source code lines vs. CPG nodes** for interpretable heatmaps. |
 | `explain_advanced.py` | Advanced multi-visualization tool. Generates CPG graph visualizations (NetworkX), bipartite code-to-graph alignment plots, and interactive HTML code overlays with attention-based highlighting. |
 | `list_predictions.py` | Prediction lister. Runs inference on an entire split and outputs all TP and FP predictions sorted by probability, along with source file paths. |
@@ -485,7 +477,7 @@ python print_tokens.py
 | `data.py` | **CodeGraphDataset** — Dataset class that discovers code/graph file pairs, compresses CPG graphs using V3 compression (keeps CFG/CDG/DDG/REACHING_DEF edges, max 90 edges, removes LITERAL/UNKNOWN nodes), and caches the tokenized dataset as a binary `.pt` file for instant loading on subsequent runs. Also contains `PadCollator` for DataLoader. |
 | `train.py` | **Trainer** — Complete training loop with AdamW optimizer, cosine warmup scheduler, AMP (bf16/fp16), gradient accumulation, gradient clipping, Focal Loss or BCE, EMA weight updates, optimal threshold search on validation, TensorBoard logging, and best model checkpointing. Also implements `extract_attention_heatmaps()` for explainability. |
 | `losses.py` | **FocalLoss** — Focal Loss implementation for imbalanced binary classification. Adds a `(1-pt)^gamma` scaling factor to BCEWithLogitsLoss to focus learning on hard examples. Supports `pos_weight`, `label_smoothing`, and `gamma` parameters. |
-| `strategies.py` | **ThresholdOptimizer** — Searches thresholds from 0.05 to 0.95 to find the one maximizing F1. **ModelEMA** — Exponential Moving Average of model weights for smoother validation and better generalization. **SeedAggregator** — Collects metrics from multiple seed runs and computes mean ± std summaries. |
+| `strategies.py` | **ThresholdOptimizer** — Searches thresholds from 0.05 to 0.95 to find the one maximizing F1. **ModelEMA** — Exponential Moving Average of model weights for smoother validation and better generalization. |
 | `utils.py` | Utility collection: `AverageMeter` (running average tracker), `MetricTracker` (batch-level F1/Precision/Recall/PR-AUC), `Logger` (TensorBoard + text file logging), `Timer` (execution time measurement), `set_seed` (reproducibility), `setup_device`, `pick_precision`, `get_amp_dtype`, `configure_tf32`, `compute_ece` (Expected Calibration Error), `compute_brier` (Brier Score), `f1_vulnerable` (F1 computation from logits), `load_config` (YAML parser), `save_checkpoint` / `load_checkpoint` (model serialization), `count_parameters`, `format_time`, `colorize` (terminal color output). |
 
 ---
@@ -506,5 +498,5 @@ python run_test.py --config config.yaml --checkpoint runs/best_model_ep5.pt
 python run_explainability.py --config config.yaml --checkpoint runs/best_model_ep5.pt
 
 # 5. Run full ablation experiments (may take a very long time)
-python run_experiments.py --config config.yaml --seeds 42,123,456 --ablation --component-ablation
+python run_experiments.py --config config.yaml --ablation --component-ablation
 ```
