@@ -163,6 +163,18 @@ strategies:
 
 You can modify `config.yaml` directly or override specific settings via CLI flags.
 
+### Dataset-specific settings used in the paper
+
+The reported experiments used the following dataset-specific values (all other settings as in `config.yaml`):
+
+| Setting | Devign | ReVeal |
+|---|---|---|
+| `optim.warmup_ratio` | 0.10 | 0.25 |
+| `loss.pos_weight` | 1.0 | 2.0 |
+| `strategies.threshold_max_recall` | 0.80 | `null` (unconstrained) |
+
+The decision threshold is selected on the validation set during training, stored in the checkpoint, and reused unchanged by `run_test.py` on the test set.
+
 ---
 
 ## Data Preparation

@@ -16,8 +16,14 @@ class ThresholdOptimizer:
     def find_optimal_threshold(
         probs: np.ndarray, 
         labels: np.ndarray, 
-        thresholds: np.ndarray = None
+        thresholds: np.ndarray = None,
+        max_recall: Optional[float] = None
     ) -> Tuple[float, float]:
+        """Search the threshold that maximizes F1.
+
+        If ``max_recall`` is given, thresholds whose recall exceeds it are skipped
+        (this constrained search was used for the Devign experiments, with 0.80).
+        """
 
         if thresholds is None:
             thresholds = np.arange(0.05, 0.96, 0.01)
@@ -30,15 +36,28 @@ class ThresholdOptimizer:
             tp = np.sum((preds == 1) & (labels == 1))
             fp = np.sum((preds == 1) & (labels == 0))
             fn = np.sum((preds == 0) & (labels == 1))
-            
+
             precision = tp / (tp + fp + 1e-8)
             recall = tp / (tp + fn + 1e-8)
+
+            if max_recall is not None and recall > max_recall:
+                continue
+
             f1 = 2 * precision * recall / (precision + recall + 1e-8)
-            
+
             if f1 > best_f1:
                 best_f1 = f1
                 best_t = t
-        
+
+        # Fallback: no threshold satisfied the recall constraint -> most conservative threshold
+        if max_recall is not None and best_f1 == 0.0:
+            best_t = float(thresholds[-1])
+            preds = (probs >= best_t).astype(int)
+            tp = np.sum((preds == 1) & (labels == 1))
+            fp = np.sum((preds == 1) & (labels == 0))
+            fn = np.sum((preds == 0) & (labels == 1))
+            best_f1 = 2 * tp / (2 * tp + fp + fn + 1e-8)
+
         return float(best_t), float(best_f1)
 
 

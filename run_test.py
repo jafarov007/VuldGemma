@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--threshold", type=float, default=None,
                         help="Fixed threshold. If not set, uses validation threshold from checkpoint.")
     parser.add_argument("--search-test", action="store_true", default=False,
-                        help="Search optimal threshold on test set"
+                        help="Search optimal threshold on test set. "
                              "WARNING: This is data leakage — use only for analysis purposes.")
     parser.add_argument("--mode", type=str, default=None,
                         help="Ablation mode override: 'full', 'code_only', 'graph_only'")
@@ -140,10 +140,11 @@ def main():
         # Explicitly requested: search optimal on test set (DATA LEAKAGE — for analysis only)
         from src.strategies import ThresholdOptimizer
         best_t, best_f1_search = ThresholdOptimizer.find_optimal_threshold(
-            all_probs, all_labels, max_recall=0.80
+            all_probs, all_labels,
+            max_recall=cfg.get("strategies", {}).get("threshold_max_recall", None)
         )
         print(f"\n  [SEARCH-TEST] Optimal threshold on test set: {best_t:.2f} "
-              f"(F1={best_f1_search:.4f})
+              f"(F1={best_f1_search:.4f})")
         print(f"  ⚠ WARNING: This is data leakage — use only for analysis/comparison!")
     else:
         # Default: use validation threshold from checkpoint (CORRECT methodology)
