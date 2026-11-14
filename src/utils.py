@@ -406,12 +406,12 @@ def set_seed(seed: int) -> None:
 def setup_device(device_str: str) -> torch.device:
     """
     Selects device and returns torch.device.
-    Örnekler: "cuda", "cuda:0", "cpu", "mps"
+    Examples: "cuda", "cuda:0", "cpu", "mps"
 
     Behavior:
-      - "cuda" istenir ve yoksa otomatik "cpu"ya düşer.
-      - "mps" (Apple Silicon) istenir ve destek yoksa "cpu"ya düşer.
-      - "cuda:N" istenir ve o indeks mevcut değilse "cpu"ya düşer.
+      - If "cuda" is requested but unavailable, falls back to "cpu".
+      - If "mps" (Apple Silicon) is requested but unsupported, falls back to "cpu".
+      - If "cuda:N" is requested but that index does not exist, falls back to "cpu".
     """
     if not isinstance(device_str, str):
         return torch.device("cpu")
@@ -422,11 +422,11 @@ def setup_device(device_str: str) -> torch.device:
     if dev.startswith("cuda"):
         if not torch.cuda.is_available():
             return torch.device("cpu")
-        # "cuda" veya "cuda:0" biçimi
+        # "cuda" or "cuda:0" format
         try:
             return torch.device(dev)
         except Exception:
-            # geçersiz indeks vs. → cpu
+            # invalid index etc. → cpu
             return torch.device("cpu")
 
     # Apple Metal
@@ -454,7 +454,7 @@ def pick_precision(requested: str = "auto") -> str:
               - If hardware supports bf16 → "bf16"
               - Aksi halde → "fp16"
           * CUDA yoksa → "fp32"
-      - requested ∈ {"bf16", "fp16", "fp32"} ise doğrudan döner (güvenlik kontrolüyle).
+      - If requested ∈ {"bf16", "fp16", "fp32"}, it is returned directly (with a safety check).
       - Other cases → "fp32"
     """
     if isinstance(requested, str):
@@ -467,14 +467,14 @@ def pick_precision(requested: str = "auto") -> str:
 
     if req == "auto":
         if torch.cuda.is_available():
-            # bf16 destek kontrolü (Ampere+ mimarileri)
+            # bf16 support check (Ampere+ architectures)
             bf16_ok = False
             try:
-                # PyTorch 2.0+ için:
+                # For PyTorch 2.0+:
                 if hasattr(torch.cuda, "is_bf16_supported"):
                     bf16_ok = bool(torch.cuda.is_bf16_supported())
                 else:
-                    # mimari üzerinden tahmin: (8.x ve üstü genelde bf16 destekler)
+                    # estimate from architecture: (8.x and above generally support bf16)
                     major, minor = torch.cuda.get_device_capability()
                     bf16_ok = (major >= 8)
             except Exception:
@@ -492,21 +492,21 @@ def pick_precision(requested: str = "auto") -> str:
 
 def get_amp_dtype(precision: str) -> Optional[torch.dtype]:
     """
-    AMP (Automatic Mixed Precision) için uygun torch.dtype döndürür.
+    Returns the appropriate torch.dtype for AMP (Automatic Mixed Precision).
       - "bf16" → torch.bfloat16
       - "fp16" → torch.float16
-      - "fp32" → None (AMP kapalı, tam hassasiyet)
+      - "fp32" → None (AMP disabled, full precision)
 
     Not:
-      - torch.autocast kullanırken dtype=None → tam hassasiyet
-      - Model/config tarafında `precision` ile birlikte çağrılır.
+      - When using torch.autocast, dtype=None → full precision
+      - Called together with `precision` on the model/config side.
     """
     p = (precision or "").lower().strip()
     if p == "bf16":
         return torch.bfloat16
     if p == "fp16":
         return torch.float16
-    return None  # fp32 veya bilinmeyen → AMP kapalı
+    return None  # fp32 or unknown → AMP disabled
 # ============================================================
 # Fonksiyon 5/14 — configure_tf32
 # ============================================================
@@ -531,12 +531,12 @@ def compute_ece(
     with torch.no_grad():
         # Shape correction
         if logits.dim() > 1:
-            # (N,2) softmax logit geldi ise pozitif sınıfı seç
+            # if (N,2) softmax logits are given, select the positive class
             if logits.shape[-1] == 2:
                 # class-1 logit - class-0 logit → sigmoid ile p1
                 logits = logits[..., 1] - logits[..., 0]
             else:
-                # (N,1) ise sıkıştır
+                # squeeze if (N,1)
                 logits = logits.squeeze(-1)
         if labels.dim() > 1:
             labels = labels.view(-1)
@@ -585,8 +585,8 @@ def compute_brier(
 ) -> float:
     """
     Binary Brier Score hesaplar: mean( (p - y)^2 )
-    - from_logits=True ise sigmoid(logits) kullanılır.
-    - Çok boyutlu logit gelirse (N,2) → class-1 olasılığına indirger.
+    - If from_logits=True, sigmoid(logits) is used.
+    - Multi-dimensional logits (N,2) are reduced to the class-1 probability.
 
     Returns:
         float: Brier skoru (0 → ideal)
@@ -618,7 +618,7 @@ def f1_vulnerable(
 ) -> float:
 
     with torch.no_grad():
-        # Şekilleri normalize et
+        # Normalize shapes
         if y_pred.dim() > 1:
             if y_pred.shape[-1] == 2:
                 # class-1 logit - class-0 logit
@@ -631,7 +631,7 @@ def f1_vulnerable(
         y_true = y_true.long().detach().cpu()
         y_pred = y_pred.float().detach().cpu()
 
-        # Olasılık
+        # Probability
         probs = torch.sigmoid(y_pred) if from_logits else y_pred.clamp(0, 1)
         preds_bin = (probs >= float(threshold)).long()
 
@@ -665,17 +665,17 @@ def load_config(path_or_dict: Any) -> Dict[str, Any]:
 
     if isinstance(path_or_dict, str):
         if not os.path.exists(path_or_dict):
-            raise FileNotFoundError(f"Config dosyası not found: {path_or_dict}")
+            raise FileNotFoundError(f"Config file not found: {path_or_dict}")
         with open(path_or_dict, "r", encoding="utf-8") as f:
             try:
                 cfg = yaml.safe_load(f)
             except Exception as e:
-                raise ValueError(f"Config YAML parse hatası: {e}")
+                raise ValueError(f"Config YAML parse error: {e}")
         if not isinstance(cfg, dict):
-            raise ValueError("Config dosyası bir YAML sözlüğü içermiyor.")
+            raise ValueError("Config file does not contain a YAML mapping.")
         return cfg
 
-    raise TypeError("load_config: path_or_dict dict veya str olmalıdır.")
+    raise TypeError("load_config: path_or_dict must be a dict or str.")
 # ============================================================
 # Fonksiyon 10/14 — save_checkpoint
 # ============================================================
@@ -702,7 +702,7 @@ def save_checkpoint(
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
 
-    # CPU'ya taşı
+    # Move to CPU
     cpu_ckpt = {}
     for k, v in checkpoint.items():
         if isinstance(v, dict):
@@ -724,16 +724,16 @@ def load_checkpoint(
     strict: bool = True,
 ) -> Dict[str, Any]:
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Checkpoint dosyası not found: {path}")
+        raise FileNotFoundError(f"Checkpoint file not found: {path}")
 
     checkpoint = torch.load(path, map_location=device)
     if "model_state" not in checkpoint:
         raise ValueError(f"Invalid checkpoint format: {path}")
 
-    # Model yükle
+    # Load model
     model.load_state_dict(checkpoint["model_state"], strict=strict)
 
-    # Çıktı meta
+    # Output metadata
     meta_info = {
         "epoch": checkpoint.get("epoch", 0),
         "meta": checkpoint.get("meta", {}),
@@ -757,7 +757,7 @@ def count_parameters(model: torch.nn.Module, trainable_only: bool = False) -> Di
         if p.requires_grad:
             trainable += numel
 
-    # 32-bit float parametre başına 4 byte (yaklaşık tahmin)
+    # 4 bytes per 32-bit float parameter (approximate estimate)
     size_mb = (trainable if trainable_only else total) * 4 / (1024 ** 2)
     info = {
         "trainable": trainable,
@@ -778,7 +778,7 @@ def format_time(seconds: float) -> str:
     if sec < 0:
         sec = 0.0
 
-    # milisaniye için kısa yol
+    # shortcut for milliseconds
     if sec < 1.0:
         return f"{int(sec * 1000)}ms"
 
