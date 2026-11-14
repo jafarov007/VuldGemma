@@ -123,7 +123,7 @@ class CodeGraphDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        # Cache yapısı sayesinde DataLoader artık hiçbir dosyaya dokunmaz, direkt RAM'den okur!
+        # Thanks to the cache, the DataLoader no longer touches any files and reads directly from RAM.
         return self.samples[idx]
 
     def _compress_graph(self, graph_raw: str) -> str:

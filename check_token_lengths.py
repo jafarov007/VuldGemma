@@ -143,7 +143,7 @@ def compress_graph_v3(graph_raw: str) -> str:
 def main():
     cfg = load_config()
     model_name = cfg["model"]["base"]
-    print(f"Tokenizer yükleniyor: {model_name}...")
+    print(f"Loading tokenizer: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     root = cfg["paths"]["root"]
@@ -153,7 +153,7 @@ def main():
     all_files = [f for f in os.listdir(code_dir) if f.endswith(".c") or f.endswith(".cpp")]
     
     print("\n" + "="*70)
-    print(" TOKEN UZUNLUĞU HESAPLAMA (ESKİ vs V1 vs V2 vs V3 Final)")
+    print(" TOKEN LENGTH CALCULATION (OLD vs V1 vs V2 vs V3 Final)")
     print("="*70)
 
     for deneme in range(1, 4):
