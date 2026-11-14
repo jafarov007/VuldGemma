@@ -15,6 +15,7 @@ runs/
 *.png
 *.html
 *.json
+!preprocessing/splits/**/*.json
 prediction_results.txt
 
 # OS/IDE metadata
